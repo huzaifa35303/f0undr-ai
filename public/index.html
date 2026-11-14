@@ -148,6 +148,20 @@
                 </div>
               </div>
 
+              <div class="model-option" data-model="aura-1" onclick="selectModel('aura-1')">
+                <div class="model-opt-icon">✨</div>
+                <div class="model-opt-body">
+                  <div class="model-opt-title-row">
+                    <span class="model-opt-title">Aura 1</span>
+                    <span class="model-opt-badge purple">Human AI</span>
+                  </div>
+                  <p class="model-opt-desc">Empathetic conversation, natural human voice &amp; storytelling.</p>
+                </div>
+                <div class="model-opt-check">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+
               <div class="model-option" data-model="verdant-1" onclick="selectModel('verdant-1')">
                 <div class="model-opt-icon">🌿</div>
                 <div class="model-opt-body">
@@ -219,6 +233,15 @@
             rows="1"
             placeholder="Ask Kortex 1 anything, search the web, or write code..."
           ></textarea>
+
+          <button type="button" class="action-btn mic-btn" id="voiceInputBtn" title="Speak to f0undr AI">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+          </button>
 
           <button type="submit" class="submit-circle-btn" id="sendBtn" title="Send message">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

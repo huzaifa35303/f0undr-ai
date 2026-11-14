@@ -56,7 +56,7 @@ async function handleChat(req, res) {
   };
 
   try {
-    const selectedModel = body.model === 'verdant-1' ? 'verdant-1' : 'kortex-1';
+    const selectedModel = ['kortex-1', 'verdant-1', 'aura-1'].includes(body.model) ? body.model : 'kortex-1';
     const finalAnswer = await answer(question, emit, {
       model: selectedModel,
       conversation: messages,

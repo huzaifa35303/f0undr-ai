@@ -3,7 +3,7 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playChime(type = 'send') {
   try {
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createGain ? audioCtx.createOscillator() : null;
+    const osc = audioCtx.createOscillator ? audioCtx.createOscillator() : null;
     const gain = audioCtx.createGain();
     if (!osc) return;
     osc.connect(gain);
@@ -40,6 +40,14 @@ const MODELS = {
     placeholder: 'Ask Kortex 1 anything, search the web, or write code...',
     disclaimer: 'Kortex 1 by f0undr. Built from first principles with zero API keys.'
   },
+  'aura-1': {
+    name: 'Aura 1',
+    icon: '✨',
+    badge: 'by f0undr',
+    tier: 'Aura 1 Human AI',
+    placeholder: 'Talk with Aura 1, brainstorm ideas, or ask anything...',
+    disclaimer: 'Aura 1 by f0undr. Built from first principles with zero API keys.'
+  },
   'verdant-1': {
     name: 'Verdant 1',
     icon: '🌿',
@@ -57,6 +65,8 @@ let threads = [];
 let activeThreadId = null;
 let isStreaming = false;
 let latestCanvasCode = '';
+let activeUtterance = null;
+let currentSpeechBtn = null;
 
 const sidebar = document.getElementById('sidebar');
 const collapseSidebarBtn = document.getElementById('collapseSidebarBtn');
@@ -69,6 +79,7 @@ const welcomeHero = document.getElementById('welcomeHero');
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
+const voiceInputBtn = document.getElementById('voiceInputBtn');
 const disclaimerText = document.querySelector('.disclaimer-text');
 const userTier = document.querySelector('.user-tier');
 
@@ -114,6 +125,161 @@ document.addEventListener('click', (e) => {
     modelPickerContainer.classList.remove('open');
   }
 });
+
+function stripMarkdownForSpeech(md = '') {
+  return md
+    .replace(/```[\s\S]*?```/g, ' [Code block omitted] ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#{1,6}\s+(.*$)/gm, '$1. ')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\|[^\n]+\|/g, ' ')
+    .replace(/^\s*[-*]\s+/gm, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+window.toggleSpeech = function(btn, rawText) {
+  if (!('speechSynthesis' in window)) {
+    alert('Speech synthesis is not supported in this browser.');
+    return;
+  }
+
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    if (currentSpeechBtn) {
+      currentSpeechBtn.classList.remove('speaking');
+      currentSpeechBtn.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <span>Listen</span>
+      `;
+    }
+    if (currentSpeechBtn === btn) {
+      currentSpeechBtn = null;
+      return;
+    }
+  }
+
+  const plainText = stripMarkdownForSpeech(rawText);
+  if (!plainText) return;
+
+  const utter = new SpeechSynthesisUtterance(plainText);
+  utter.rate = 1.02;
+  utter.pitch = 1.0;
+
+  const voices = window.speechSynthesis.getVoices();
+  const naturalEn = voices.find((v) => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('David')));
+  if (naturalEn) utter.voice = naturalEn;
+
+  currentSpeechBtn = btn;
+  btn.classList.add('speaking');
+  btn.innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="6" y="4" width="4" height="16"></rect>
+      <rect x="14" y="4" width="4" height="16"></rect>
+    </svg>
+    <span>Stop</span>
+  `;
+
+  utter.onend = () => {
+    btn.classList.remove('speaking');
+    btn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+      <span>Listen</span>
+    `;
+    currentSpeechBtn = null;
+  };
+
+  utter.onerror = () => {
+    btn.classList.remove('speaking');
+    btn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      </svg>
+      <span>Listen</span>
+    `;
+    currentSpeechBtn = null;
+  };
+
+  activeUtterance = utter;
+  window.speechSynthesis.speak(utter);
+};
+
+window.copyMessageText = function(btn) {
+  const row = btn.closest('.message-row');
+  const prose = row?.querySelector('.bot-prose');
+  const text = prose ? prose.innerText : '';
+  navigator.clipboard.writeText(text).then(() => {
+    const span = btn.querySelector('span');
+    const prev = span ? span.textContent : 'Copy';
+    if (span) span.textContent = 'Copied!';
+    setTimeout(() => {
+      if (span) span.textContent = prev;
+    }, 2000);
+  });
+};
+
+if (voiceInputBtn) {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRec) {
+    const recognizer = new SpeechRec();
+    recognizer.continuous = false;
+    recognizer.interimResults = true;
+    recognizer.lang = 'en-US';
+
+    let isListening = false;
+
+    voiceInputBtn.addEventListener('click', () => {
+      if (!isListening) {
+        recognizer.start();
+      } else {
+        recognizer.stop();
+      }
+    });
+
+    recognizer.onstart = () => {
+      isListening = true;
+      voiceInputBtn.classList.add('listening');
+      chatInput.placeholder = 'Listening... Speak now';
+    };
+
+    recognizer.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((r) => r[0].transcript)
+        .join('');
+      chatInput.value = transcript;
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
+    };
+
+    recognizer.onend = () => {
+      isListening = false;
+      voiceInputBtn.classList.remove('listening');
+      const cfg = MODELS[currentModel] || MODELS['kortex-1'];
+      chatInput.placeholder = cfg.placeholder;
+      if (chatInput.value.trim()) {
+        chatInput.focus();
+      }
+    };
+
+    recognizer.onerror = () => {
+      isListening = false;
+      voiceInputBtn.classList.remove('listening');
+      const cfg = MODELS[currentModel] || MODELS['kortex-1'];
+      chatInput.placeholder = cfg.placeholder;
+    };
+  } else {
+    voiceInputBtn.style.display = 'none';
+  }
+}
 
 function loadThreads() {
   try {
@@ -273,6 +439,26 @@ function renderActiveThread() {
       textDiv.innerHTML = renderMarkdown(msg.content);
       content.appendChild(textDiv);
 
+      const actionsRow = document.createElement('div');
+      actionsRow.className = 'bot-actions-row';
+      actionsRow.innerHTML = `
+        <button class="msg-action-btn" onclick="toggleSpeech(this, \`${escapeQuote(msg.content)}\`)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <span>Listen</span>
+        </button>
+        <button class="msg-action-btn" onclick="copyMessageText(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span>Copy</span>
+        </button>
+      `;
+      content.appendChild(actionsRow);
+
       row.appendChild(avatar);
       row.appendChild(content);
       messagesContainer.appendChild(row);
@@ -409,16 +595,21 @@ function createBotMessageContainer(modelKey = currentModel) {
   const textDiv = document.createElement('div');
   textDiv.className = 'bot-prose';
 
+  const actionsRow = document.createElement('div');
+  actionsRow.className = 'bot-actions-row';
+  actionsRow.style.display = 'none';
+
   content.appendChild(statusPill);
   content.appendChild(thoughtBox);
   content.appendChild(textDiv);
+  content.appendChild(actionsRow);
 
   row.appendChild(avatar);
   row.appendChild(content);
   messagesContainer.appendChild(row);
   scrollToBottom();
 
-  return { row, statusPill, thoughtBox, textDiv };
+  return { row, statusPill, thoughtBox, textDiv, actionsRow };
 }
 
 function scrollToBottom() {
@@ -574,6 +765,24 @@ chatForm.addEventListener('submit', async (e) => {
           if (event === 'done') {
             botUI.statusPill.style.display = 'none';
             playChime('done');
+
+            botUI.actionsRow.style.display = 'flex';
+            botUI.actionsRow.innerHTML = `
+              <button class="msg-action-btn" onclick="toggleSpeech(this, \`${escapeQuote(accumulatedAnswer)}\`)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+                <span>Listen</span>
+              </button>
+              <button class="msg-action-btn" onclick="copyMessageText(this)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>Copy</span>
+              </button>
+            `;
 
             const matchHtml = accumulatedAnswer.match(/```(?:html)?\s*(<!DOCTYPE[\s\S]*?)```/i);
             if (matchHtml && matchHtml[1]) {
