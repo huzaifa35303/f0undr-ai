@@ -3,8 +3,9 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playChime(type = 'send') {
   try {
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
+    const osc = audioCtx.createGain ? audioCtx.createOscillator() : null;
     const gain = audioCtx.createGain();
+    if (!osc) return;
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     const now = audioCtx.currentTime;
@@ -28,6 +29,29 @@ function playChime(type = 'send') {
 
 const STORAGE_KEY = 'f0undr_ai_threads';
 const ACTIVE_KEY = 'f0undr_ai_active_id';
+const MODEL_STORAGE_KEY = 'f0undr_ai_model';
+
+const MODELS = {
+  'kortex-1': {
+    name: 'Kortex 1',
+    icon: '⚡',
+    badge: 'by f0undr',
+    tier: 'Kortex 1 Flagship',
+    placeholder: 'Ask Kortex 1 anything, search the web, or write code...',
+    disclaimer: 'Kortex 1 by f0undr. Built from first principles with zero API keys.'
+  },
+  'verdant-1': {
+    name: 'Verdant 1',
+    icon: '🌿',
+    badge: 'by f0undr',
+    tier: 'Verdant 1 Earth AI',
+    placeholder: 'Ask Verdant 1 about living earth systems, science, or simulations...',
+    disclaimer: 'Verdant 1 by f0undr. Built from first principles with zero API keys.'
+  }
+};
+
+let currentModel = localStorage.getItem(MODEL_STORAGE_KEY) || 'kortex-1';
+if (!MODELS[currentModel]) currentModel = 'kortex-1';
 
 let threads = [];
 let activeThreadId = null;
@@ -45,12 +69,51 @@ const welcomeHero = document.getElementById('welcomeHero');
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
+const disclaimerText = document.querySelector('.disclaimer-text');
+const userTier = document.querySelector('.user-tier');
+
+const modelPickerContainer = document.getElementById('modelPickerContainer');
+const modelSelectorBtn = document.getElementById('modelSelectorBtn');
+const currentModelIcon = document.getElementById('currentModelIcon');
+const currentModelName = document.getElementById('currentModelName');
 
 const canvasWorkspace = document.getElementById('canvasWorkspace');
 const canvasIframe = document.getElementById('canvasIframe');
 const toggleCanvasBtn = document.getElementById('toggleCanvasBtn');
 const closeCanvasBtn = document.getElementById('closeCanvasBtn');
 const refreshCanvasBtn = document.getElementById('refreshCanvasBtn');
+
+function applyModelUI(modelKey) {
+  currentModel = modelKey;
+  localStorage.setItem(MODEL_STORAGE_KEY, modelKey);
+  const cfg = MODELS[modelKey] || MODELS['kortex-1'];
+
+  if (currentModelIcon) currentModelIcon.textContent = cfg.icon;
+  if (currentModelName) currentModelName.textContent = cfg.name;
+  if (chatInput) chatInput.placeholder = cfg.placeholder;
+  if (disclaimerText) disclaimerText.textContent = cfg.disclaimer;
+  if (userTier) userTier.textContent = cfg.tier;
+
+  document.querySelectorAll('.model-option').forEach((opt) => {
+    opt.classList.toggle('active', opt.dataset.model === modelKey);
+  });
+}
+
+window.selectModel = function(modelKey) {
+  applyModelUI(modelKey);
+  modelPickerContainer?.classList.remove('open');
+};
+
+modelSelectorBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  modelPickerContainer?.classList.toggle('open');
+});
+
+document.addEventListener('click', (e) => {
+  if (modelPickerContainer && !modelPickerContainer.contains(e.target)) {
+    modelPickerContainer.classList.remove('open');
+  }
+});
 
 function loadThreads() {
   try {
@@ -89,6 +152,7 @@ function createNewThread() {
     id,
     title: 'New chat',
     messages: [],
+    model: currentModel,
     updatedAt: Date.now()
   };
   threads.unshift(newThread);
@@ -185,7 +249,8 @@ function renderActiveThread() {
 
       const avatar = document.createElement('div');
       avatar.className = 'bot-avatar';
-      avatar.textContent = '⚡';
+      const mKey = msg.model || current.model || currentModel;
+      avatar.textContent = MODELS[mKey]?.icon || '⚡';
 
       const content = document.createElement('div');
       content.className = 'bot-content';
@@ -315,13 +380,13 @@ function appendUserMessage(text) {
   scrollToBottom();
 }
 
-function createBotMessageContainer() {
+function createBotMessageContainer(modelKey = currentModel) {
   const row = document.createElement('div');
   row.className = 'message-row';
 
   const avatar = document.createElement('div');
   avatar.className = 'bot-avatar';
-  avatar.textContent = '⚡';
+  avatar.textContent = MODELS[modelKey]?.icon || '⚡';
 
   const content = document.createElement('div');
   content.className = 'bot-content';
@@ -448,6 +513,7 @@ chatForm.addEventListener('submit', async (e) => {
   const currentThread = getActiveThread();
   if (currentThread.messages.length === 0 || currentThread.title === 'New chat') {
     currentThread.title = text.slice(0, 28) + (text.length > 28 ? '...' : '');
+    currentThread.model = currentModel;
     renderSidebarHistory();
   }
 
@@ -455,7 +521,7 @@ chatForm.addEventListener('submit', async (e) => {
   currentThread.updatedAt = Date.now();
   saveThreads();
 
-  const botUI = createBotMessageContainer();
+  const botUI = createBotMessageContainer(currentModel);
   let accumulatedAnswer = '';
   let accumulatedThought = '';
 
@@ -465,7 +531,7 @@ chatForm.addEventListener('submit', async (e) => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         messages: currentThread.messages,
-        model: 'kortex-1',
+        model: currentModel,
       }),
     });
 
@@ -522,6 +588,7 @@ chatForm.addEventListener('submit', async (e) => {
       role: 'assistant',
       content: accumulatedAnswer,
       thought: accumulatedThought,
+      model: currentModel
     });
     currentThread.updatedAt = Date.now();
     saveThreads();
@@ -535,6 +602,7 @@ chatForm.addEventListener('submit', async (e) => {
   }
 });
 
+applyModelUI(currentModel);
 loadThreads();
 renderSidebarHistory();
 renderActiveThread();

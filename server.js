@@ -56,8 +56,9 @@ async function handleChat(req, res) {
   };
 
   try {
+    const selectedModel = body.model === 'verdant-1' ? 'verdant-1' : 'kortex-1';
     const finalAnswer = await answer(question, emit, {
-      model: 'verdant-1',
+      model: selectedModel,
       conversation: messages,
     });
     emit('done', { text: finalAnswer });

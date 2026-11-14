@@ -244,23 +244,42 @@ body {
   gap: 12px;
 }
 
-.single-model-badge {
+.model-picker-container {
+  position: relative;
+  display: inline-block;
+}
+
+.model-selector-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
   user-select: none;
 }
 
-.model-title {
+.model-selector-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-subtle);
+}
+
+.model-selector-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.model-selector-name {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.3px;
   color: var(--text-primary);
 }
 
-.model-tag-chip {
+.model-selector-chip {
   font-size: 11px;
   font-weight: 600;
   background: rgba(16, 185, 129, 0.15);
@@ -268,6 +287,130 @@ body {
   border: 1px solid rgba(16, 185, 129, 0.25);
   padding: 2px 8px;
   border-radius: 12px;
+}
+
+.chevron-icon {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.model-picker-container.open .chevron-icon {
+  transform: rotate(180deg);
+}
+
+.model-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 310px;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  z-index: 100;
+  display: none;
+  animation: dropdownFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.model-picker-container.open .model-dropdown-menu {
+  display: block;
+}
+
+.model-dropdown-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  padding: 6px 10px 8px;
+}
+
+.model-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.model-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.model-option.active {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.model-opt-icon {
+  font-size: 18px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.model-opt-body {
+  flex: 1;
+}
+
+.model-opt-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-opt-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.model-opt-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.model-opt-badge.green {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent);
+}
+
+.model-opt-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 3px;
+}
+
+.model-opt-check {
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.model-option.active .model-opt-check {
+  opacity: 1;
 }
 
 .canvas-btn-label {

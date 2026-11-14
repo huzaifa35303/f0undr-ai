@@ -124,10 +124,44 @@
             </svg>
           </button>
 
-          <div class="single-model-badge">
-            <span class="model-leaf-icon">⚡</span>
-            <span class="model-title">Kortex 1</span>
-            <span class="model-tag-chip">by f0undr</span>
+          <div class="model-picker-container" id="modelPickerContainer">
+            <button class="model-selector-btn" id="modelSelectorBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Switch AI model">
+              <span class="model-selector-icon" id="currentModelIcon">⚡</span>
+              <span class="model-selector-name" id="currentModelName">Kortex 1</span>
+              <span class="model-selector-chip">by f0undr</span>
+              <svg class="chevron-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+
+            <div class="model-dropdown-menu" id="modelDropdownMenu">
+              <div class="model-dropdown-header">Model Selection</div>
+              <div class="model-option active" data-model="kortex-1" onclick="selectModel('kortex-1')">
+                <div class="model-opt-icon">⚡</div>
+                <div class="model-opt-body">
+                  <div class="model-opt-title-row">
+                    <span class="model-opt-title">Kortex 1</span>
+                    <span class="model-opt-badge">Flagship</span>
+                  </div>
+                  <p class="model-opt-desc">Universal reasoning, deep search &amp; code craft.</p>
+                </div>
+                <div class="model-opt-check">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+
+              <div class="model-option" data-model="verdant-1" onclick="selectModel('verdant-1')">
+                <div class="model-opt-icon">🌿</div>
+                <div class="model-opt-body">
+                  <div class="model-opt-title-row">
+                    <span class="model-opt-title">Verdant 1</span>
+                    <span class="model-opt-badge green">Earth AI</span>
+                  </div>
+                  <p class="model-opt-desc">Living earth systems, climate, ecology &amp; canvas tools.</p>
+                </div>
+                <div class="model-opt-check">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
