@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verdant 1 — by f0undr</title>
+
+  <!-- Open SEO Metadata -->
+  <meta name="description" content="Verdant 1 is an autonomous, universal conversational AI created by f0undr." />
+  <meta name="keywords" content="Verdant 1, f0undr, Zero API AI, ChatGPT Alternative, Open SEO" />
+  <meta name="author" content="f0undr" />
+  <link rel="canonical" href="https://verdant.f0undr.com/" />
+
+  <!-- Google Inter Font for ChatGPT-grade Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="chatgpt-layout">
+    <!-- Left Sidebar (Collapsible like ChatGPT) -->
+    <aside class="chatgpt-sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <button class="new-chat-btn" id="newChatBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New chat</span>
+        </button>
+        <button class="icon-btn-ghost" id="collapseSidebarBtn" title="Close sidebar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="sidebar-history" id="chatHistoryList">
+        <div class="history-section-title">Recent Chats</div>
+        <div class="history-item active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <span>Conversation with Verdant 1</span>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-badge">
+          <div class="profile-avatar">⚡</div>
+          <div class="profile-info">
+            <span class="user-name">by f0undr</span>
+            <span class="user-tier">Verdant 1 Flagship</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <div class="main-workspace">
+      <!-- ChatGPT Top Navigation Bar: Single Pure Model Badge (Verdant 1 - by f0undr) -->
+      <header class="chatgpt-header">
+        <div class="header-left">
+          <button class="icon-btn-ghost" id="openSidebarBtn" style="display:none;" title="Open sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+
+          <!-- Single Pure Model Badge: Verdant 1 by f0undr -->
+          <div class="single-model-badge">
+            <span class="model-leaf-icon">⚡</span>
+            <span class="model-title">Verdant 1</span>
+            <span class="model-tag-chip">by f0undr</span>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <button class="icon-btn-ghost" id="toggleCanvasBtn" title="Toggle Canvas Split-Screen">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="15" y1="3" x2="15" y2="21"></line>
+            </svg>
+            <span class="canvas-btn-label">Canvas</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Center Chat Stream -->
+      <main class="chat-thread" id="messagesContainer">
+        <!-- ChatGPT Style Centered Greeting Hero -->
+        <div class="chatgpt-welcome" id="welcomeHero">
+          <div class="welcome-logo">⚡</div>
+          <h2 class="welcome-heading">Where shall we explore today?</h2>
+          <p class="welcome-sub">Grounded in real-time web search and universal intelligence. Created <strong>by f0undr</strong>.</p>
+
+          <div class="chatgpt-pills-grid">
+            <button class="pill-card" onclick="askQuick('Explain how modern search engines index web documents')">
+              <span class="card-emoji">🔍</span>
+              <span class="card-text">Search Engine Indexing</span>
+            </button>
+            <button class="pill-card" onclick="askQuick('Write a clean JavaScript function for debounce and throttle')">
+              <span class="card-emoji">💻</span>
+              <span class="card-text">Code snippet &amp; architecture</span>
+            </button>
+            <button class="pill-card" onclick="askQuick('Launch an interactive calculator in Canvas')">
+              <span class="card-emoji">📊</span>
+              <span class="card-text">Interactive Canvas Tool</span>
+            </button>
+            <button class="pill-card" onclick="askQuick('What are the latest global scientific breakthroughs this year?')">
+              <span class="card-emoji">🚀</span>
+              <span class="card-text">Global discoveries</span>
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <!-- ChatGPT Fixed Floating Pill Bottom Bar -->
+      <div class="chatgpt-input-container">
+        <form class="chatgpt-input-box" id="chatForm">
+          <button type="button" class="action-btn attach-btn" title="Live Web Search" onclick="askQuick('Search the web for latest technology breakthroughs')">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+          </button>
+
+          <textarea
+            id="chatInput"
+            class="chatgpt-textarea"
+            rows="1"
+            placeholder="Ask Verdant 1 anything, search the web, or write code..."
+          ></textarea>
+
+          <button type="submit" class="submit-circle-btn" id="sendBtn" title="Send message">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+            </svg>
+          </button>
+        </form>
+        <div class="disclaimer-text">
+          Verdant 1 by f0undr. Built from first principles with zero API keys.
+        </div>
+      </div>
+    </div>
+
+    <!-- Side-by-Side Canvas Workspace (Live Split-Screen) -->
+    <aside class="canvas-workspace" id="canvasWorkspace">
+      <header class="canvas-header">
+        <div class="canvas-title">
+          <span>⚡</span>
+          <span>Canvas Live Sandbox</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="icon-btn-ghost" id="refreshCanvasBtn" title="Rerun Canvas code">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </button>
+          <button class="icon-btn-ghost" id="closeCanvasBtn" title="Close Canvas">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </header>
+      <div class="canvas-frame-container">
+        <iframe class="canvas-iframe" id="canvasIframe" sandbox="allow-scripts allow-modals"></iframe>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

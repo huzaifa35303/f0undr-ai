@@ -1,0 +1,27 @@
+{
+  "name": "f0undr-ai",
+  "version": "1.0.0",
+  "description": "f0undr AI — Autonomous Zero-API Conversational & Search Intelligence Engine",
+  "main": "server.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "ask": "node ask.js"
+  },
+  "keywords": [
+    "f0undr-ai",
+    "verdant-1",
+    "zero-api-ai",
+    "build-your-own-x",
+    "open-seo",
+    "unslop",
+    "open-design",
+    "rea"
+  ],
+  "author": "f0undr",
+  "license": "MIT"
+}
