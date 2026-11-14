@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://conservation-ai.f0undr.com/sitemap.xml
+Sitemap: https://ai.f0undrteam.site/sitemap.xml
+Host: https://ai.f0undrteam.site

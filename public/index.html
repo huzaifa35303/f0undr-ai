@@ -3,25 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Verdant 1 — by f0undr</title>
+  <title>Verdant 1 — Autonomous AI &amp; Real-Time Search by f0undr</title>
 
   <!-- Open SEO Metadata -->
-  <meta name="description" content="Verdant 1 is an autonomous, universal conversational AI created by f0undr." />
-  <meta name="keywords" content="Verdant 1, f0undr, Zero API AI, ChatGPT Alternative, Open SEO" />
+  <meta name="description" content="Verdant 1 by f0undr is an autonomous, universal conversational AI and real-time live web search engine built from first principles with zero API keys." />
+  <meta name="keywords" content="f0undr ai, verdant 1, f0undr, f0undr team, zero api ai, conversational ai, real time web search ai, ai search engine, open seo ai, chatgpt alternative, perplexity alternative, free ai chat, earth intelligence, bioearth" />
   <meta name="author" content="f0undr" />
-  <link rel="canonical" href="https://verdant.f0undr.com/" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <link rel="canonical" href="https://ai.f0undrteam.site/" />
 
-  <!-- Google Inter Font for ChatGPT-grade Typography -->
+  <!-- Google Search Console & Verification Meta Tags -->
+  <meta name="google-site-verification" content="f0undr-ai-google-verification" />
+  <meta name="yandex-verification" content="f0undr-ai-yandex" />
+  <meta name="msvalidate.01" content="f0undr-ai-bing" />
+
+  <!-- OpenGraph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ai.f0undrteam.site/" />
+  <meta property="og:site_name" content="f0undr AI" />
+  <meta property="og:title" content="Verdant 1 — Autonomous AI &amp; Real-Time Search by f0undr" />
+  <meta property="og:description" content="Conversational AI and real-time live web intelligence built from first principles with zero API keys." />
+  <meta property="og:image" content="https://ai.f0undrteam.site/favicon.svg" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://ai.f0undrteam.site/" />
+  <meta name="twitter:title" content="Verdant 1 — Autonomous AI &amp; Real-Time Search by f0undr" />
+  <meta name="twitter:description" content="Conversational AI and real-time live web intelligence built from first principles with zero API keys." />
+  <meta name="twitter:image" content="https://ai.f0undrteam.site/favicon.svg" />
+
+  <!-- Favicon & PWA -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate icon" type="image/png" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <!-- Schema.org JSON-LD Structured Data for Google Search -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "@id": "https://ai.f0undrteam.site/#webapp",
+        "name": "Verdant 1",
+        "alternateName": ["f0undr AI", "Verdant AI"],
+        "url": "https://ai.f0undrteam.site/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "description": "Verdant 1 by f0undr is an autonomous, universal conversational AI and real-time live web search engine built from first principles with zero API keys.",
+        "creator": {
+          "@type": "Organization",
+          "name": "f0undr",
+          "url": "https://f0undrteam.site"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://ai.f0undrteam.site/#website",
+        "url": "https://ai.f0undrteam.site/",
+        "name": "f0undr AI",
+        "description": "Conversational AI and real-time web search engine",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://ai.f0undrteam.site/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  }
+  </script>
+
+  <!-- Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div class="chatgpt-layout">
-    <!-- Left Sidebar (Collapsible like ChatGPT) -->
+    <!-- Left Sidebar -->
     <aside class="chatgpt-sidebar" id="sidebar">
       <div class="sidebar-top">
         <button class="new-chat-btn" id="newChatBtn">
@@ -60,7 +128,7 @@
 
     <!-- Main Workspace -->
     <div class="main-workspace">
-      <!-- ChatGPT Top Navigation Bar: Single Pure Model Badge (Verdant 1 - by f0undr) -->
+      <!-- Top Navigation Bar -->
       <header class="chatgpt-header">
         <div class="header-left">
           <button class="icon-btn-ghost" id="openSidebarBtn" style="display:none;" title="Open sidebar">
@@ -70,7 +138,6 @@
             </svg>
           </button>
 
-          <!-- Single Pure Model Badge: Verdant 1 by f0undr -->
           <div class="single-model-badge">
             <span class="model-leaf-icon">⚡</span>
             <span class="model-title">Verdant 1</span>
@@ -91,10 +158,10 @@
 
       <!-- Center Chat Stream -->
       <main class="chat-thread" id="messagesContainer">
-        <!-- ChatGPT Style Centered Greeting Hero -->
+        <!-- Centered Greeting Hero -->
         <div class="chatgpt-welcome" id="welcomeHero">
           <div class="welcome-logo">⚡</div>
-          <h2 class="welcome-heading">Where shall we explore today?</h2>
+          <h1 class="welcome-heading">Where shall we explore today?</h1>
           <p class="welcome-sub">Grounded in real-time web search and universal intelligence. Created <strong>by f0undr</strong>.</p>
 
           <div class="chatgpt-pills-grid">
@@ -118,14 +185,14 @@
         </div>
       </main>
 
-      <!-- ChatGPT Fixed Floating Pill Bottom Bar -->
+      <!-- Fixed Floating Pill Bottom Bar -->
       <div class="chatgpt-input-container">
         <form class="chatgpt-input-box" id="chatForm">
           <button type="button" class="action-btn attach-btn" title="Live Web Search" onclick="askQuick('Search the web for latest technology breakthroughs')">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="2" y1="12" x2="22" y2="12"></line>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
             </svg>
           </button>
 
@@ -148,7 +215,7 @@
       </div>
     </div>
 
-    <!-- Side-by-Side Canvas Workspace (Live Split-Screen) -->
+    <!-- Canvas Split-Screen Workspace -->
     <aside class="canvas-workspace" id="canvasWorkspace">
       <header class="canvas-header">
         <div class="canvas-title">
