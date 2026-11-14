@@ -1,10 +1,3 @@
-/**
- * Verdant 1 - by f0undr
- * Clean, natural GPT/Gemini conversational controller.
- * Live Canvas Split-Screen, Web Audio, and zero noisy link pills.
- */
-
-// Procedural Audio Synthesizer
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function playChime(type = 'send') {
@@ -14,7 +7,6 @@ function playChime(type = 'send') {
     const gain = audioCtx.createGain();
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
     const now = audioCtx.currentTime;
     if (type === 'send') {
       osc.frequency.setValueAtTime(400, now);
@@ -34,11 +26,19 @@ function playChime(type = 'send') {
   } catch {}
 }
 
-// DOM References
+const STORAGE_KEY = 'f0undr_ai_threads';
+const ACTIVE_KEY = 'f0undr_ai_active_id';
+
+let threads = [];
+let activeThreadId = null;
+let isStreaming = false;
+let latestCanvasCode = '';
+
 const sidebar = document.getElementById('sidebar');
 const collapseSidebarBtn = document.getElementById('collapseSidebarBtn');
 const openSidebarBtn = document.getElementById('openSidebarBtn');
 const newChatBtn = document.getElementById('newChatBtn');
+const chatHistoryList = document.getElementById('chatHistoryList');
 
 const messagesContainer = document.getElementById('messagesContainer');
 const welcomeHero = document.getElementById('welcomeHero');
@@ -52,11 +52,171 @@ const toggleCanvasBtn = document.getElementById('toggleCanvasBtn');
 const closeCanvasBtn = document.getElementById('closeCanvasBtn');
 const refreshCanvasBtn = document.getElementById('refreshCanvasBtn');
 
-let conversation = [];
-let isStreaming = false;
-let latestCanvasCode = '';
+function loadThreads() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    threads = raw ? JSON.parse(raw) : [];
+  } catch {
+    threads = [];
+  }
+  activeThreadId = localStorage.getItem(ACTIVE_KEY);
+  if (!threads.length) {
+    createNewThread();
+  } else if (!threads.some((t) => t.id === activeThreadId)) {
+    activeThreadId = threads[0].id;
+    localStorage.setItem(ACTIVE_KEY, activeThreadId);
+  }
+}
 
-// Sidebar Toggle
+function saveThreads() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
+    if (activeThreadId) localStorage.setItem(ACTIVE_KEY, activeThreadId);
+  } catch {}
+}
+
+function getActiveThread() {
+  let found = threads.find((t) => t.id === activeThreadId);
+  if (!found) {
+    found = createNewThread();
+  }
+  return found;
+}
+
+function createNewThread() {
+  const id = 'chat_' + Date.now();
+  const newThread = {
+    id,
+    title: 'New chat',
+    messages: [],
+    updatedAt: Date.now()
+  };
+  threads.unshift(newThread);
+  activeThreadId = id;
+  saveThreads();
+  renderSidebarHistory();
+  renderActiveThread();
+  return newThread;
+}
+
+function deleteThread(id, event) {
+  if (event) event.stopPropagation();
+  threads = threads.filter((t) => t.id !== id);
+  if (activeThreadId === id) {
+    if (threads.length) {
+      activeThreadId = threads[0].id;
+    } else {
+      createNewThread();
+      return;
+    }
+  }
+  saveThreads();
+  renderSidebarHistory();
+  renderActiveThread();
+}
+window.deleteThread = deleteThread;
+
+function switchThread(id) {
+  if (isStreaming) return;
+  activeThreadId = id;
+  saveThreads();
+  renderSidebarHistory();
+  renderActiveThread();
+}
+window.switchThread = switchThread;
+
+function renderSidebarHistory() {
+  if (!chatHistoryList) return;
+  chatHistoryList.innerHTML = '<div class="history-section-title">Recent Chats</div>';
+  threads.forEach((t) => {
+    const item = document.createElement('div');
+    item.className = 'history-item' + (t.id === activeThreadId ? ' active' : '');
+    item.onclick = () => switchThread(t.id);
+
+    const left = document.createElement('div');
+    left.className = 'history-item-left';
+    left.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span>${escapeHtml(t.title || 'New chat')}</span>
+    `;
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'history-delete-btn';
+    delBtn.title = 'Delete conversation';
+    delBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    `;
+    delBtn.onclick = (e) => deleteThread(t.id, e);
+
+    item.appendChild(left);
+    item.appendChild(delBtn);
+    chatHistoryList.appendChild(item);
+  });
+}
+
+function renderActiveThread() {
+  messagesContainer.innerHTML = '';
+  const current = getActiveThread();
+  if (!current.messages.length) {
+    if (welcomeHero) {
+      welcomeHero.style.display = 'block';
+      messagesContainer.appendChild(welcomeHero);
+    }
+    toggleCanvas(false);
+    return;
+  }
+
+  if (welcomeHero) welcomeHero.style.display = 'none';
+
+  current.messages.forEach((msg) => {
+    if (msg.role === 'user') {
+      const row = document.createElement('div');
+      row.className = 'message-row user';
+      row.innerHTML = `<div class="user-bubble">${escapeHtml(msg.content)}</div>`;
+      messagesContainer.appendChild(row);
+    } else if (msg.role === 'assistant') {
+      const row = document.createElement('div');
+      row.className = 'message-row';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'bot-avatar';
+      avatar.textContent = '⚡';
+
+      const content = document.createElement('div');
+      content.className = 'bot-content';
+
+      if (msg.thought) {
+        const thoughtBox = document.createElement('details');
+        thoughtBox.className = 'thought-box';
+        thoughtBox.innerHTML = `
+          <summary class="thought-summary">
+            <span>🧠</span>
+            <span>Thought Process</span>
+          </summary>
+          <div class="thought-content">${escapeHtml(msg.thought)}</div>
+        `;
+        content.appendChild(thoughtBox);
+      }
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'bot-prose';
+      textDiv.innerHTML = renderMarkdown(msg.content);
+      content.appendChild(textDiv);
+
+      row.appendChild(avatar);
+      row.appendChild(content);
+      messagesContainer.appendChild(row);
+    }
+  });
+
+  scrollToBottom();
+}
+
 collapseSidebarBtn?.addEventListener('click', () => {
   sidebar.classList.add('collapsed');
   openSidebarBtn.style.display = 'flex';
@@ -68,16 +228,11 @@ openSidebarBtn?.addEventListener('click', () => {
 });
 
 newChatBtn?.addEventListener('click', () => {
-  conversation = [];
-  messagesContainer.innerHTML = '';
-  if (welcomeHero) {
-    welcomeHero.style.display = 'block';
-    messagesContainer.appendChild(welcomeHero);
-  }
-  toggleCanvas(false);
+  if (isStreaming) return;
+  createNewThread();
+  chatInput.focus();
 });
 
-// Canvas Runner
 function toggleCanvas(forceOpen = null) {
   if (forceOpen !== null) {
     canvasWorkspace.classList.toggle('open', forceOpen);
@@ -116,7 +271,23 @@ window.runInCanvas = function(htmlCode) {
   canvasIframe.srcdoc = preparedHtml;
 };
 
-// Auto-expand textarea
+window.copyCode = function(btn) {
+  const wrapper = btn.closest('.code-block-wrapper');
+  if (!wrapper) return;
+  const codeEl = wrapper.querySelector('pre code');
+  const codeText = codeEl ? codeEl.textContent : '';
+  navigator.clipboard.writeText(codeText).then(() => {
+    const span = btn.querySelector('span');
+    const prev = span ? span.textContent : 'Copy';
+    if (span) span.textContent = 'Copied!';
+    btn.style.color = '#10b981';
+    setTimeout(() => {
+      if (span) span.textContent = prev;
+      btn.style.color = '';
+    }, 2000);
+  });
+};
+
 chatInput.addEventListener('input', () => {
   chatInput.style.height = 'auto';
   chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
@@ -190,22 +361,46 @@ function scrollToBottom() {
 }
 
 function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function escapeQuote(str) {
+  return String(str).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
 }
 
 function renderMarkdown(md) {
   let html = escapeHtml(md);
 
-  // HTML Code Blocks & Canvas execution trigger
-  html = html.replace(/```(html|xml)?([\s\S]*?)```/gi, (_, lang, code) => {
+  html = html.replace(/```([a-zA-Z0-9_-]+)?\n?([\s\S]*?)```/gi, (_, lang, code) => {
     const raw = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').trim();
-    if (lang === 'html' || raw.includes('<!DOCTYPE') || raw.includes('<canvas') || raw.includes('<table')) {
-      return `<pre><code>${code.trim()}</code></pre>
-        <button class="open-canvas-pill" onclick="runInCanvas(\`${escapeQuote(raw)}\`)">
-          <span>⚡</span> Open in Live Canvas
-        </button>`;
-    }
-    return `<pre><code>${code.trim()}</code></pre>`;
+    const l = (lang || 'code').toLowerCase();
+    const isHtmlApp = l === 'html' || raw.includes('<!DOCTYPE') || raw.includes('<canvas') || raw.includes('<table');
+
+    const previewBtn = isHtmlApp
+      ? `<button class="code-btn" onclick="runInCanvas(\`${escapeQuote(raw)}\`)">
+           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+           <span>Run Canvas</span>
+         </button>`
+      : '';
+
+    return `
+      <div class="code-block-wrapper">
+        <div class="code-header-bar">
+          <span class="code-lang-label">${escapeHtml(l)}</span>
+          <div class="code-actions">
+            ${previewBtn}
+            <button class="code-btn" onclick="copyCode(this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Copy</span>
+            </button>
+          </div>
+        </div>
+        <pre><code class="language-${escapeHtml(l)}">${code.trim()}</code></pre>
+      </div>
+    `;
   });
 
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -214,7 +409,6 @@ function renderMarkdown(md) {
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 
-  // Markdown tables
   html = html.replace(/((?:\|[^\n]+\|\r?\n)+)/g, (match) => {
     const lines = match.trim().split('\n');
     if (lines.length < 2) return match;
@@ -231,21 +425,13 @@ function renderMarkdown(md) {
     return tableHtml;
   });
 
-  // Bullet points
   html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
   html = html.replace(/((?:<li>.*?<\/li>\s*)+)/gim, '<ul>$1</ul>');
-
-  // Paragraph breaks
   html = html.replace(/\n\n/g, '<br/><br/>');
 
   return html;
 }
 
-function escapeQuote(str) {
-  return str.replace(/`/g, '\\`').replace(/\$/g, '\\$');
-}
-
-// Form Submission
 chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = chatInput.value.trim();
@@ -258,7 +444,16 @@ chatForm.addEventListener('submit', async (e) => {
 
   playChime('send');
   appendUserMessage(text);
-  conversation.push({ role: 'user', content: text });
+
+  const currentThread = getActiveThread();
+  if (currentThread.messages.length === 0 || currentThread.title === 'New chat') {
+    currentThread.title = text.slice(0, 28) + (text.length > 28 ? '...' : '');
+    renderSidebarHistory();
+  }
+
+  currentThread.messages.push({ role: 'user', content: text });
+  currentThread.updatedAt = Date.now();
+  saveThreads();
 
   const botUI = createBotMessageContainer();
   let accumulatedAnswer = '';
@@ -269,8 +464,8 @@ chatForm.addEventListener('submit', async (e) => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        messages: conversation,
-        model: 'verdant-1',
+        messages: currentThread.messages,
+        model: 'kortex-1',
       }),
     });
 
@@ -323,7 +518,13 @@ chatForm.addEventListener('submit', async (e) => {
       }
     }
 
-    conversation.push({ role: 'assistant', content: accumulatedAnswer });
+    currentThread.messages.push({
+      role: 'assistant',
+      content: accumulatedAnswer,
+      thought: accumulatedThought,
+    });
+    currentThread.updatedAt = Date.now();
+    saveThreads();
   } catch (err) {
     botUI.statusPill.style.display = 'none';
     botUI.textDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
@@ -333,3 +534,7 @@ chatForm.addEventListener('submit', async (e) => {
     botUI.statusPill.style.display = 'none';
   }
 });
+
+loadThreads();
+renderSidebarHistory();
+renderActiveThread();
