@@ -177,9 +177,57 @@
               </div>
             </div>
           </div>
+          <div class="tone-picker-container" id="tonePickerContainer">
+            <button class="tone-selector-btn" id="toneSelectorBtn" type="button" aria-haspopup="true" aria-expanded="false" title="Conversational Tone">
+              <span class="tone-selector-icon" id="currentToneIcon">💬</span>
+              <span class="tone-selector-name" id="currentToneName">Casual</span>
+              <svg class="chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+
+            <div class="tone-dropdown-menu" id="toneDropdownMenu">
+              <div class="model-dropdown-header">Conversational Vibe</div>
+              <div class="tone-option active" data-tone="casual" onclick="selectTone('casual')">
+                <span class="tone-opt-icon">💬</span>
+                <div class="tone-opt-body">
+                  <div class="tone-opt-title">Casual &amp; Witty</div>
+                  <div class="tone-opt-desc">Warm, relatable conversational friend.</div>
+                </div>
+              </div>
+              <div class="tone-option" data-tone="direct" onclick="selectTone('direct')">
+                <span class="tone-opt-icon">⚡</span>
+                <div class="tone-opt-body">
+                  <div class="tone-opt-title">Direct &amp; Punchy</div>
+                  <div class="tone-opt-desc">Concise bullet points, zero fluff.</div>
+                </div>
+              </div>
+              <div class="tone-option" data-tone="expert" onclick="selectTone('expert')">
+                <span class="tone-opt-icon">🎓</span>
+                <div class="tone-opt-body">
+                  <div class="tone-opt-title">Deep Expert</div>
+                  <div class="tone-opt-desc">Technical nuance, architecture &amp; trade-offs.</div>
+                </div>
+              </div>
+              <div class="tone-option" data-tone="eli5" onclick="selectTone('eli5')">
+                <span class="tone-opt-icon">👶</span>
+                <div class="tone-opt-body">
+                  <div class="tone-opt-title">ELI5 (Explain Like 5)</div>
+                  <div class="tone-opt-desc">Simple everyday analogies &amp; no jargon.</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="header-right">
+          <button class="icon-btn-ghost memory-toggle-btn" id="memoryBtn" title="Persistent Memory" onclick="toggleMemoryModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a5 5 0 0 1 5 5v1a5 5 0 0 1-3.5 4.8V17a1.5 1.5 0 0 1-3 0v-4.2A5 5 0 0 1 7 8V7a5 5 0 0 1 5-5z"></path>
+              <path d="M9 22h6"></path>
+              <path d="M10 19h4"></path>
+            </svg>
+            <span class="memory-count-badge" id="memoryCountBadge">0</span>
+          </button>
+
           <button class="icon-btn-ghost" id="toggleCanvasBtn" title="Toggle Canvas Split-Screen">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -280,6 +328,25 @@
         <iframe class="canvas-iframe" id="canvasIframe" sandbox="allow-scripts allow-modals"></iframe>
       </div>
     </aside>
+  </div>
+
+  <div class="memory-modal-backdrop" id="memoryModal" onclick="closeMemoryModal(event)">
+    <div class="memory-modal-card" onclick="event.stopPropagation()">
+      <div class="memory-modal-header">
+        <div class="memory-modal-title">
+          <span>🧠</span>
+          <span>Persistent Memory</span>
+        </div>
+        <button class="icon-btn-ghost" onclick="toggleMemoryModal(false)" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <p class="memory-modal-sub">Things f0undr AI remembers about you across sessions. Tell the AI <em>"Remember that..."</em> in chat to store facts.</p>
+      <div class="memory-items-list" id="memoryItemsList"></div>
+      <div class="memory-modal-footer">
+        <button class="clear-memory-btn" onclick="clearAllMemories()">Clear All Memories</button>
+      </div>
+    </div>
   </div>
 
   <script src="/app.js"></script>

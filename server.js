@@ -57,8 +57,13 @@ async function handleChat(req, res) {
 
   try {
     const selectedModel = ['kortex-1', 'verdant-1', 'aura-1'].includes(body.model) ? body.model : 'kortex-1';
+    const selectedTone = ['casual', 'direct', 'expert', 'eli5'].includes(body.tone) ? body.tone : 'casual';
+    const memories = Array.isArray(body.memories) ? body.memories : [];
+
     const finalAnswer = await answer(question, emit, {
       model: selectedModel,
+      tone: selectedTone,
+      memories,
       conversation: messages,
     });
     emit('done', { text: finalAnswer });

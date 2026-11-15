@@ -30,6 +30,8 @@ function playChime(type = 'send') {
 const STORAGE_KEY = 'f0undr_ai_threads';
 const ACTIVE_KEY = 'f0undr_ai_active_id';
 const MODEL_STORAGE_KEY = 'f0undr_ai_model';
+const TONE_STORAGE_KEY = 'f0undr_tone';
+const MEMORY_STORAGE_KEY = 'f0undr_memories';
 
 const MODELS = {
   'kortex-1': {
@@ -58,8 +60,41 @@ const MODELS = {
   }
 };
 
+const TONES = {
+  casual: { name: 'Casual', icon: '💬' },
+  direct: { name: 'Direct', icon: '⚡' },
+  expert: { name: 'Expert', icon: '🎓' },
+  eli5: { name: 'ELI5', icon: '👶' }
+};
+
 let currentModel = localStorage.getItem(MODEL_STORAGE_KEY) || 'kortex-1';
 if (!MODELS[currentModel]) currentModel = 'kortex-1';
+
+let currentTone = localStorage.getItem(TONE_STORAGE_KEY) || 'casual';
+if (!TONES[currentTone]) currentTone = 'casual';
+
+let memories = [];
+function loadMemories() {
+  try {
+    const raw = localStorage.getItem(MEMORY_STORAGE_KEY);
+    memories = raw ? JSON.parse(raw) : [];
+  } catch {
+    memories = [];
+  }
+  updateMemoryBadge();
+}
+
+function saveMemories() {
+  try {
+    localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(memories));
+  } catch {}
+  updateMemoryBadge();
+}
+
+function updateMemoryBadge() {
+  const badge = document.getElementById('memoryCountBadge');
+  if (badge) badge.textContent = String(memories.length);
+}
 
 let threads = [];
 let activeThreadId = null;
@@ -88,11 +123,19 @@ const modelSelectorBtn = document.getElementById('modelSelectorBtn');
 const currentModelIcon = document.getElementById('currentModelIcon');
 const currentModelName = document.getElementById('currentModelName');
 
+const tonePickerContainer = document.getElementById('tonePickerContainer');
+const toneSelectorBtn = document.getElementById('toneSelectorBtn');
+const currentToneIcon = document.getElementById('currentToneIcon');
+const currentToneName = document.getElementById('currentToneName');
+
 const canvasWorkspace = document.getElementById('canvasWorkspace');
 const canvasIframe = document.getElementById('canvasIframe');
 const toggleCanvasBtn = document.getElementById('toggleCanvasBtn');
 const closeCanvasBtn = document.getElementById('closeCanvasBtn');
 const refreshCanvasBtn = document.getElementById('refreshCanvasBtn');
+
+const memoryModal = document.getElementById('memoryModal');
+const memoryItemsList = document.getElementById('memoryItemsList');
 
 function applyModelUI(modelKey) {
   currentModel = modelKey;
@@ -117,17 +160,96 @@ window.selectModel = function(modelKey) {
 
 modelSelectorBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
+  tonePickerContainer?.classList.remove('open');
   modelPickerContainer?.classList.toggle('open');
+});
+
+function applyToneUI(toneKey) {
+  currentTone = toneKey;
+  localStorage.setItem(TONE_STORAGE_KEY, toneKey);
+  const cfg = TONES[toneKey] || TONES.casual;
+
+  if (currentToneIcon) currentToneIcon.textContent = cfg.icon;
+  if (currentToneName) currentToneName.textContent = cfg.name;
+
+  document.querySelectorAll('.tone-option').forEach((opt) => {
+    opt.classList.toggle('active', opt.dataset.tone === toneKey);
+  });
+}
+
+window.selectTone = function(toneKey) {
+  applyToneUI(toneKey);
+  tonePickerContainer?.classList.remove('open');
+};
+
+toneSelectorBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  modelPickerContainer?.classList.remove('open');
+  tonePickerContainer?.classList.toggle('open');
 });
 
 document.addEventListener('click', (e) => {
   if (modelPickerContainer && !modelPickerContainer.contains(e.target)) {
     modelPickerContainer.classList.remove('open');
   }
+  if (tonePickerContainer && !tonePickerContainer.contains(e.target)) {
+    tonePickerContainer.classList.remove('open');
+  }
 });
+
+window.toggleMemoryModal = function(forceOpen = null) {
+  if (forceOpen === false) {
+    memoryModal?.classList.remove('open');
+  } else if (forceOpen === true) {
+    renderMemoriesList();
+    memoryModal?.classList.add('open');
+  } else {
+    const willOpen = !memoryModal?.classList.contains('open');
+    if (willOpen) renderMemoriesList();
+    memoryModal?.classList.toggle('open');
+  }
+};
+
+window.closeMemoryModal = function(e) {
+  if (e) e.stopPropagation();
+  memoryModal?.classList.remove('open');
+};
+
+function renderMemoriesList() {
+  if (!memoryItemsList) return;
+  if (!memories.length) {
+    memoryItemsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">No memories stored yet. Mention <em>"Remember that..."</em> in any conversation to save a fact.</div>';
+    return;
+  }
+
+  memoryItemsList.innerHTML = memories.map((m, idx) => `
+    <div class="memory-item">
+      <span class="memory-item-text">${escapeHtml(m)}</span>
+      <button class="memory-delete-btn" onclick="deleteMemory(${idx})" title="Delete memory">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+window.deleteMemory = function(idx) {
+  memories.splice(idx, 1);
+  saveMemories();
+  renderMemoriesList();
+};
+
+window.clearAllMemories = function() {
+  memories = [];
+  saveMemories();
+  renderMemoriesList();
+};
 
 function stripMarkdownForSpeech(md = '') {
   return md
+    .replace(/\[FOLLOW_UPS:[\s\S]*?\]/gi, '')
     .replace(/```[\s\S]*?```/g, ' [Code block omitted] ')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/^#{1,6}\s+(.*$)/gm, '$1. ')
@@ -436,8 +558,41 @@ function renderActiveThread() {
 
       const textDiv = document.createElement('div');
       textDiv.className = 'bot-prose';
-      textDiv.innerHTML = renderMarkdown(msg.content);
+      textDiv.innerHTML = renderMarkdown(cleanFollowUps(msg.content));
       content.appendChild(textDiv);
+
+      const followUps = extractFollowUps(msg.content);
+      if (followUps.length) {
+        const pillBox = document.createElement('div');
+        pillBox.className = 'follow-up-container';
+        pillBox.innerHTML = followUps.map((fu) => `
+          <button class="follow-up-pill" onclick="askQuick(\`${escapeQuote(fu)}\`)">
+            <span>💡</span>
+            <span>${escapeHtml(fu)}</span>
+          </button>
+        `).join('');
+        content.appendChild(pillBox);
+      }
+
+      if (msg.sources && msg.sources.length) {
+        const sourcesBox = document.createElement('details');
+        sourcesBox.className = 'sources-container';
+        sourcesBox.innerHTML = `
+          <summary class="sources-summary">
+            <span>🔍</span>
+            <span>Verified Sources (${msg.sources.length})</span>
+          </summary>
+          <div class="sources-list">
+            ${msg.sources.map((s) => `
+              <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="source-item-chip" title="${escapeHtml(s.title)}">
+                <img src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(s.domain || '')}&sz=16" width="14" height="14" alt="" />
+                <span>${escapeHtml(s.domain || s.title)}</span>
+              </a>
+            `).join('')}
+          </div>
+        `;
+        content.appendChild(sourcesBox);
+      }
 
       const actionsRow = document.createElement('div');
       actionsRow.className = 'bot-actions-row';
@@ -609,7 +764,7 @@ function createBotMessageContainer(modelKey = currentModel) {
   messagesContainer.appendChild(row);
   scrollToBottom();
 
-  return { row, statusPill, thoughtBox, textDiv, actionsRow };
+  return { row, content, statusPill, thoughtBox, textDiv, actionsRow };
 }
 
 function scrollToBottom() {
@@ -622,6 +777,19 @@ function escapeHtml(str) {
 
 function escapeQuote(str) {
   return String(str).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+}
+
+function cleanFollowUps(text = '') {
+  return text.replace(/\[FOLLOW_UPS:[\s\S]*?\]/gi, '').trim();
+}
+
+function extractFollowUps(text = '') {
+  const m = text.match(/\[FOLLOW_UPS:\s*(.*?)\]/i);
+  if (!m || !m[1]) return [];
+  return m[1]
+    .split('|')
+    .map((s) => s.replace(/^["'\s]+|["'\s]+$/g, '').trim())
+    .filter(Boolean);
 }
 
 function renderMarkdown(md) {
@@ -659,6 +827,7 @@ function renderMarkdown(md) {
     `;
   });
 
+  html = html.replace(/^>\s*(.*?)$/gim, '<blockquote>$1</blockquote>');
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
   html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
@@ -715,6 +884,7 @@ chatForm.addEventListener('submit', async (e) => {
   const botUI = createBotMessageContainer(currentModel);
   let accumulatedAnswer = '';
   let accumulatedThought = '';
+  let collectedSources = [];
 
   try {
     const res = await fetch('/api/chat', {
@@ -723,6 +893,8 @@ chatForm.addEventListener('submit', async (e) => {
       body: JSON.stringify({
         messages: currentThread.messages,
         model: currentModel,
+        tone: currentTone,
+        memories,
       }),
     });
 
@@ -750,6 +922,17 @@ chatForm.addEventListener('submit', async (e) => {
             botUI.statusPill.querySelector('.status-text').textContent = payload.text;
           }
 
+          if (event === 'memory' && payload.fact) {
+            if (!memories.includes(payload.fact)) {
+              memories.push(payload.fact);
+              saveMemories();
+            }
+          }
+
+          if (event === 'sources' && Array.isArray(payload.sources)) {
+            collectedSources = payload.sources;
+          }
+
           if (event === 'thought' && payload.text) {
             accumulatedThought = payload.text;
             botUI.thoughtBox.style.display = 'block';
@@ -758,7 +941,7 @@ chatForm.addEventListener('submit', async (e) => {
 
           if (event === 'token' && payload.text) {
             accumulatedAnswer += payload.text;
-            botUI.textDiv.innerHTML = renderMarkdown(accumulatedAnswer);
+            botUI.textDiv.innerHTML = renderMarkdown(cleanFollowUps(accumulatedAnswer));
             scrollToBottom();
           }
 
@@ -766,9 +949,45 @@ chatForm.addEventListener('submit', async (e) => {
             botUI.statusPill.style.display = 'none';
             playChime('done');
 
+            const cleanText = cleanFollowUps(accumulatedAnswer);
+            botUI.textDiv.innerHTML = renderMarkdown(cleanText);
+
+            const followUps = extractFollowUps(accumulatedAnswer);
+            if (followUps.length) {
+              const pillsBox = document.createElement('div');
+              pillsBox.className = 'follow-up-container';
+              pillsBox.innerHTML = followUps.map((fu) => `
+                <button class="follow-up-pill" onclick="askQuick(\`${escapeQuote(fu)}\`)">
+                  <span>💡</span>
+                  <span>${escapeHtml(fu)}</span>
+                </button>
+              `).join('');
+              botUI.content.appendChild(pillsBox);
+            }
+
+            if (collectedSources.length) {
+              const sourcesBox = document.createElement('details');
+              sourcesBox.className = 'sources-container';
+              sourcesBox.innerHTML = `
+                <summary class="sources-summary">
+                  <span>🔍</span>
+                  <span>Verified Sources (${collectedSources.length})</span>
+                </summary>
+                <div class="sources-list">
+                  ${collectedSources.map((s) => `
+                    <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="source-item-chip" title="${escapeHtml(s.title)}">
+                      <img src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(s.domain || '')}&sz=16" width="14" height="14" alt="" />
+                      <span>${escapeHtml(s.domain || s.title)}</span>
+                    </a>
+                  `).join('')}
+                </div>
+              `;
+              botUI.content.appendChild(sourcesBox);
+            }
+
             botUI.actionsRow.style.display = 'flex';
             botUI.actionsRow.innerHTML = `
-              <button class="msg-action-btn" onclick="toggleSpeech(this, \`${escapeQuote(accumulatedAnswer)}\`)">
+              <button class="msg-action-btn" onclick="toggleSpeech(this, \`${escapeQuote(cleanText)}\`)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                   <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
@@ -784,7 +1003,7 @@ chatForm.addEventListener('submit', async (e) => {
               </button>
             `;
 
-            const matchHtml = accumulatedAnswer.match(/```(?:html)?\s*(<!DOCTYPE[\s\S]*?)```/i);
+            const matchHtml = cleanText.match(/```(?:html)?\s*(<!DOCTYPE[\s\S]*?)```/i);
             if (matchHtml && matchHtml[1]) {
               runInCanvas(matchHtml[1].trim());
             }
@@ -797,7 +1016,8 @@ chatForm.addEventListener('submit', async (e) => {
       role: 'assistant',
       content: accumulatedAnswer,
       thought: accumulatedThought,
-      model: currentModel
+      model: currentModel,
+      sources: collectedSources
     });
     currentThread.updatedAt = Date.now();
     saveThreads();
@@ -812,6 +1032,8 @@ chatForm.addEventListener('submit', async (e) => {
 });
 
 applyModelUI(currentModel);
+applyToneUI(currentTone);
+loadMemories();
 loadThreads();
 renderSidebarHistory();
 renderActiveThread();
