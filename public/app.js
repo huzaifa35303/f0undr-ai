@@ -437,6 +437,160 @@ window.viewScreenFull = function(dataUrl) {
   }
 };
 
+let activeLiveStream = null;
+let liveSessionTimer = null;
+let liveSessionExpiresAt = null;
+let liveContinuousSpeech = null;
+
+window.toggleContinuousLiveSession = function() {
+  if (activeLiveStream) {
+    window.stopContinuousLiveSession();
+  } else {
+    window.startContinuousLiveSession(60);
+  }
+};
+
+window.startContinuousLiveSession = async function(minutes = 60) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    alert('Screen sharing is not supported in this browser.');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { cursor: 'always', displaySurface: 'monitor' },
+      audio: false
+    });
+
+    activeLiveStream = stream;
+    liveSessionExpiresAt = Date.now() + minutes * 60 * 1000;
+
+    const hud = document.getElementById('jarvisLiveHud');
+    const hudVideo = document.getElementById('liveHudVideo');
+    const liveBtn = document.getElementById('liveCopilotBtn');
+
+    if (hud && hudVideo) {
+      hudVideo.srcObject = stream;
+      hud.style.display = 'flex';
+    }
+    if (liveBtn) liveBtn.classList.add('active');
+
+    const videoTrack = stream.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.onended = () => {
+        window.stopContinuousLiveSession();
+      };
+    }
+
+    if (liveSessionTimer) clearInterval(liveSessionTimer);
+    liveSessionTimer = setInterval(() => {
+      const remainingMs = liveSessionExpiresAt - Date.now();
+      if (remainingMs <= 0) {
+        window.stopContinuousLiveSession();
+        return;
+      }
+      const totalSec = Math.floor(remainingMs / 1000);
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      const timerElem = document.getElementById('liveHudTimer');
+      if (timerElem) {
+        timerElem.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+    }, 1000);
+
+    startLiveContinuousSpeech();
+
+    if ('speechSynthesis' in window) {
+      const intro = new SpeechSynthesisUtterance('Live Copilot activated. I am watching your screen and listening for the next hour.');
+      intro.rate = 1.05;
+      window.speechSynthesis.speak(intro);
+    }
+  } catch (err) {
+    if (err.name !== 'NotAllowedError') {
+      console.error(err);
+    }
+  }
+};
+
+window.stopContinuousLiveSession = function() {
+  if (activeLiveStream) {
+    activeLiveStream.getTracks().forEach((t) => t.stop());
+    activeLiveStream = null;
+  }
+  if (liveSessionTimer) {
+    clearInterval(liveSessionTimer);
+    liveSessionTimer = null;
+  }
+  if (liveContinuousSpeech) {
+    try { liveContinuousSpeech.stop(); } catch {}
+    liveContinuousSpeech = null;
+  }
+
+  const hud = document.getElementById('jarvisLiveHud');
+  const liveBtn = document.getElementById('liveCopilotBtn');
+  if (hud) hud.style.display = 'none';
+  if (liveBtn) liveBtn.classList.remove('active');
+
+  const hudVideo = document.getElementById('liveHudVideo');
+  if (hudVideo) hudVideo.srcObject = null;
+};
+
+function startLiveContinuousSpeech() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) return;
+
+  try {
+    const recognizer = new SpeechRec();
+    recognizer.continuous = true;
+    recognizer.interimResults = false;
+    recognizer.lang = 'en-US';
+
+    recognizer.onresult = async (event) => {
+      const last = event.results[event.results.length - 1];
+      if (last && last.isFinal) {
+        const query = last[0].transcript.trim();
+        if (query && !isStreaming) {
+          const statusElem = document.getElementById('liveHudStatus');
+          if (statusElem) statusElem.textContent = `Processing: "${query}"`;
+          chatInput.value = query;
+          chatForm.dispatchEvent(new Event('submit'));
+        }
+      }
+    };
+
+    recognizer.onerror = () => {};
+    recognizer.onend = () => {
+      if (activeLiveStream) {
+        try { recognizer.start(); } catch {}
+      }
+    };
+
+    recognizer.start();
+    liveContinuousSpeech = recognizer;
+  } catch {}
+}
+
+window.captureCurrentLiveFrame = function() {
+  const hudVideo = document.getElementById('liveHudVideo');
+  if (!hudVideo || !hudVideo.videoWidth) return null;
+
+  const canvas = document.createElement('canvas');
+  const scale = Math.min(1, 1600 / (hudVideo.videoWidth || 1600));
+  canvas.width = hudVideo.videoWidth * scale;
+  canvas.height = hudVideo.videoHeight * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(hudVideo, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.85);
+};
+
+window.triggerLiveAnalysis = async function() {
+  const frame = window.captureCurrentLiveFrame();
+  if (!frame) return;
+
+  currentScreenCapture = { dataUrl: frame, timestamp: Date.now() };
+  chatInput.value = 'Inspect my screen, explain what is happening, and tell me what actions or next steps to take.';
+  chatForm.dispatchEvent(new Event('submit'));
+};
+
 if (voiceInputBtn) {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SpeechRec) {
@@ -1006,8 +1160,16 @@ chatForm.addEventListener('submit', async (e) => {
 
   playChime('send');
 
-  const capturedImage = currentScreenCapture ? currentScreenCapture.dataUrl : null;
-  const capturedText = currentScreenText;
+  let capturedImage = currentScreenCapture ? currentScreenCapture.dataUrl : null;
+  let capturedText = currentScreenText;
+
+  if (activeLiveStream && !capturedImage) {
+    const liveFrame = window.captureCurrentLiveFrame();
+    if (liveFrame) {
+      capturedImage = liveFrame;
+      capturedText = 'Screen frame captured live during 1-hour Copilot session.';
+    }
+  }
 
   appendUserMessage(text, capturedImage);
 
@@ -1067,7 +1229,11 @@ chatForm.addEventListener('submit', async (e) => {
           }
 
           if (event === 'action') {
-            if (payload.type === 'request_screen') {
+            if (payload.type === 'start_live_copilot') {
+              window.startContinuousLiveSession(payload.duration || 60);
+            } else if (payload.type === 'stop_live_copilot') {
+              window.stopContinuousLiveSession();
+            } else if (payload.type === 'request_screen') {
               window.startScreenCapture();
             } else if (payload.url) {
               try {
@@ -1105,6 +1271,13 @@ chatForm.addEventListener('submit', async (e) => {
 
             const cleanText = cleanFollowUps(accumulatedAnswer);
             botUI.textDiv.innerHTML = renderMarkdown(cleanText);
+
+            if (activeLiveStream && 'speechSynthesis' in window) {
+              const plainSpeech = stripMarkdownForSpeech(cleanText);
+              const utter = new SpeechSynthesisUtterance(plainSpeech.slice(0, 450));
+              utter.rate = 1.05;
+              window.speechSynthesis.speak(utter);
+            }
 
             const followUps = extractFollowUps(accumulatedAnswer);
             if (followUps.length) {
