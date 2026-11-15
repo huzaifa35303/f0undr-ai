@@ -65,6 +65,7 @@ async function handleChat(req, res) {
       model: selectedModel,
       tone: selectedTone,
       memories,
+      screenContext: typeof body.screenContext === 'string' ? body.screenContext : '',
       conversation: messages,
     });
     emit('done', { text: finalAnswer });

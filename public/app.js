@@ -349,6 +349,94 @@ window.copyMessageText = function(btn) {
   });
 };
 
+let currentScreenCapture = null;
+let currentScreenText = '';
+
+window.startScreenCapture = async function() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    alert('Screen sharing is not supported in this browser.');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { cursor: 'always', displaySurface: 'monitor' },
+      audio: false
+    });
+
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.muted = true;
+    await video.play();
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 1600 / (video.videoWidth || 1600));
+    canvas.width = (video.videoWidth || 1280) * scale;
+    canvas.height = (video.videoHeight || 720) * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    stream.getTracks().forEach((track) => track.stop());
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    currentScreenCapture = { dataUrl, timestamp: Date.now() };
+
+    const previewBar = document.getElementById('screenPreviewBar');
+    const previewThumb = document.getElementById('screenPreviewThumb');
+    const ocrStatus = document.getElementById('screenOcrStatus');
+
+    if (previewBar && previewThumb) {
+      previewThumb.src = dataUrl;
+      previewBar.style.display = 'flex';
+      if (ocrStatus) ocrStatus.textContent = 'Extracting visible screen text...';
+    }
+
+    if (window.Tesseract && typeof window.Tesseract.recognize === 'function') {
+      window.Tesseract.recognize(dataUrl, 'eng')
+        .then(({ data: { text } }) => {
+          currentScreenText = (text || '').trim();
+          if (ocrStatus) {
+            const count = currentScreenText ? currentScreenText.split(/\s+/).length : 0;
+            ocrStatus.textContent = count > 0 ? `✓ ${count} words recognized from screen` : '✓ Screen frame ready';
+          }
+        })
+        .catch(() => {
+          currentScreenText = 'Screen captured without OCR text.';
+          if (ocrStatus) ocrStatus.textContent = '✓ Screen frame ready';
+        });
+    } else {
+      currentScreenText = 'Screen frame captured.';
+      if (ocrStatus) ocrStatus.textContent = '✓ Screen frame ready';
+    }
+
+    chatInput.focus();
+    if (!chatInput.value.trim()) {
+      chatInput.placeholder = 'Ask anything about what is on your screen...';
+    }
+  } catch (err) {
+    if (err.name !== 'NotAllowedError') {
+      console.error(err);
+    }
+  }
+};
+
+window.clearScreenCapture = function() {
+  currentScreenCapture = null;
+  currentScreenText = '';
+  const previewBar = document.getElementById('screenPreviewBar');
+  if (previewBar) previewBar.style.display = 'none';
+  const cfg = MODELS[currentModel] || MODELS['kortex-1'];
+  chatInput.placeholder = cfg.placeholder;
+};
+
+window.viewScreenFull = function(dataUrl) {
+  const win = window.open('');
+  if (win) {
+    win.document.write(`<html><head><title>Screen Capture Preview</title><style>body{margin:0;background:#0a0a0c;display:flex;align-items:center;justify-content:center;height:100vh;}img{max-width:98vw;max-height:98vh;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.8);}</style></head><body><img src="${dataUrl}" alt="Full Screen Capture" /></body></html>`);
+  }
+};
+
 if (voiceInputBtn) {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SpeechRec) {
@@ -529,7 +617,11 @@ function renderActiveThread() {
     if (msg.role === 'user') {
       const row = document.createElement('div');
       row.className = 'message-row user';
-      row.innerHTML = `<div class="user-bubble">${escapeHtml(msg.content)}</div>`;
+      let imgHtml = '';
+      if (msg.image) {
+        imgHtml = `<div class="user-screen-thumb"><img src="${msg.image}" alt="Captured Screen" onclick="viewScreenFull('${msg.image}')" /><span class="screen-badge">🖥️ Screen</span></div>`;
+      }
+      row.innerHTML = `<div class="user-bubble">${imgHtml}<div>${escapeHtml(msg.content)}</div></div>`;
       messagesContainer.appendChild(row);
     } else if (msg.role === 'assistant') {
       const row = document.createElement('div');
@@ -711,12 +803,16 @@ window.askQuick = function(question) {
   chatForm.dispatchEvent(new Event('submit'));
 };
 
-function appendUserMessage(text) {
+function appendUserMessage(text, image = null) {
   if (welcomeHero) welcomeHero.style.display = 'none';
 
   const row = document.createElement('div');
   row.className = 'message-row user';
-  row.innerHTML = `<div class="user-bubble">${escapeHtml(text)}</div>`;
+  let imgHtml = '';
+  if (image) {
+    imgHtml = `<div class="user-screen-thumb"><img src="${image}" alt="Captured Screen" onclick="viewScreenFull('${image}')" /><span class="screen-badge">🖥️ Screen</span></div>`;
+  }
+  row.innerHTML = `<div class="user-bubble">${imgHtml}<div>${escapeHtml(text)}</div></div>`;
   messagesContainer.appendChild(row);
   scrollToBottom();
 }
@@ -889,8 +985,19 @@ function renderMarkdown(md) {
 
 chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const text = chatInput.value.trim();
-  if (!text || isStreaming) return;
+  let text = chatInput.value.trim();
+  if ((!text && !currentScreenCapture) || isStreaming) return;
+
+  const isScreenQuery = /^(?:can\s+you\s+)?(?:see|look\s+at|read|check|view|inspect)\s+(?:my\s+)?screen\b/i.test(text) || /^(?:what(?:'s|\s+is)\s+on\s+my\s+screen)\b/i.test(text);
+
+  if (isScreenQuery && !currentScreenCapture) {
+    await window.startScreenCapture();
+    if (!currentScreenCapture) return;
+  }
+
+  if (!text && currentScreenCapture) {
+    text = 'Please inspect what is on my screen and summarize or help me with it.';
+  }
 
   chatInput.value = '';
   chatInput.style.height = 'auto';
@@ -898,7 +1005,11 @@ chatForm.addEventListener('submit', async (e) => {
   sendBtn.disabled = true;
 
   playChime('send');
-  appendUserMessage(text);
+
+  const capturedImage = currentScreenCapture ? currentScreenCapture.dataUrl : null;
+  const capturedText = currentScreenText;
+
+  appendUserMessage(text, capturedImage);
 
   const currentThread = getActiveThread();
   if (currentThread.messages.length === 0 || currentThread.title === 'New chat') {
@@ -907,9 +1018,11 @@ chatForm.addEventListener('submit', async (e) => {
     renderSidebarHistory();
   }
 
-  currentThread.messages.push({ role: 'user', content: text });
+  currentThread.messages.push({ role: 'user', content: text, image: capturedImage });
   currentThread.updatedAt = Date.now();
   saveThreads();
+
+  window.clearScreenCapture();
 
   const botUI = createBotMessageContainer(currentModel);
   let accumulatedAnswer = '';
@@ -925,6 +1038,7 @@ chatForm.addEventListener('submit', async (e) => {
         model: currentModel,
         tone: currentTone,
         memories,
+        screenContext: capturedText,
       }),
     });
 
@@ -952,10 +1066,14 @@ chatForm.addEventListener('submit', async (e) => {
             botUI.statusPill.querySelector('.status-text').textContent = payload.text;
           }
 
-          if (event === 'action' && payload.url) {
-            try {
-              window.open(payload.url, '_blank');
-            } catch {}
+          if (event === 'action') {
+            if (payload.type === 'request_screen') {
+              window.startScreenCapture();
+            } else if (payload.url) {
+              try {
+                window.open(payload.url, '_blank');
+              } catch {}
+            }
           }
 
           if (event === 'memory' && payload.fact) {

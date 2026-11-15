@@ -84,6 +84,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
   <div class="chatgpt-layout">
@@ -271,12 +272,33 @@
       </main>
 
       <div class="chatgpt-input-container">
+        <div class="screen-preview-bar" id="screenPreviewBar" style="display:none;">
+          <div class="screen-preview-thumb-wrap">
+            <img id="screenPreviewThumb" src="" alt="Screen Preview" />
+            <span class="screen-live-tag">🖥️ Screen Attached</span>
+          </div>
+          <div class="screen-preview-info">
+            <span class="screen-preview-label">Live Screen Capture</span>
+            <span class="screen-ocr-status" id="screenOcrStatus">Analyzing visible content...</span>
+          </div>
+          <button type="button" class="screen-remove-btn" onclick="clearScreenCapture()" title="Remove screen capture">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
         <form class="chatgpt-input-box" id="chatForm">
           <button type="button" class="action-btn attach-btn" title="Live Web Search" onclick="askQuick('Search the web for latest technology breakthroughs')">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="2" y1="12" x2="22" y2="12"></line>
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+          </button>
+
+          <button type="button" class="action-btn screen-btn" id="screenVisionBtn" title="JARVIS Vision: Share Screen" onclick="startScreenCapture()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
             </svg>
           </button>
 
