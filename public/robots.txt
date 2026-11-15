@@ -1,5 +1,14 @@
 User-agent: *
 Allow: /
 
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+Allow: /favicon.ico
+Allow: /*.png
+Allow: /*.svg
+
 Sitemap: https://ai.f0undrteam.site/sitemap.xml
 Host: https://ai.f0undrteam.site
