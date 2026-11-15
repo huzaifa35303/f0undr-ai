@@ -827,6 +827,36 @@ function renderMarkdown(md) {
     `;
   });
 
+  html = html.replace(/\[ACTION_CARD:\s*([^|]+)\|\s*([^\]]+)\]/gi, (_, name, url) => {
+    const cleanName = name.trim();
+    const cleanUrl = url.trim().replace(/&amp;/g, '&');
+    return `
+      <div class="jarvis-action-card">
+        <div class="jarvis-action-header">
+          <div class="jarvis-pulse-ring">
+            <span class="jarvis-pulse-dot"></span>
+          </div>
+          <span class="jarvis-badge">⚡ JARVIS ACTION</span>
+          <span class="jarvis-status">ACTIVE</span>
+        </div>
+        <div class="jarvis-action-body">
+          <div class="jarvis-action-info">
+            <div class="jarvis-service-name">${cleanName}</div>
+            <div class="jarvis-service-url">${cleanUrl}</div>
+          </div>
+          <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="jarvis-launch-btn">
+            <span>Launch ${cleanName}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+        </div>
+      </div>
+    `;
+  });
+
   html = html.replace(/^>\s*(.*?)$/gim, '<blockquote>$1</blockquote>');
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
@@ -920,6 +950,12 @@ chatForm.addEventListener('submit', async (e) => {
 
           if (event === 'status') {
             botUI.statusPill.querySelector('.status-text').textContent = payload.text;
+          }
+
+          if (event === 'action' && payload.url) {
+            try {
+              window.open(payload.url, '_blank');
+            } catch {}
           }
 
           if (event === 'memory' && payload.fact) {
