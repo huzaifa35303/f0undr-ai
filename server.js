@@ -20,12 +20,48 @@ const MIME_TYPES = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
+/* =========================================================================
+   SECURITY & PRODUCTION HARDENING: RATE LIMITING & HEADERS
+   ========================================================================= */
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 60;
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const history = (rateLimitMap.get(ip) || []).filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
+  if (history.length >= MAX_REQUESTS_PER_WINDOW) {
+    return true;
+  }
+  history.push(now);
+  rateLimitMap.set(ip, history);
+  return false;
+}
+
+function applySecurityHeaders(res, extraHeaders = {}) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), display-capture=(self)');
+  for (const [k, v] of Object.entries(extraHeaders)) {
+    res.setHeader(k, v);
+  }
+}
+
 async function handleChat(req, res) {
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || '127.0.0.1';
+  if (isRateLimited(clientIp)) {
+    applySecurityHeaders(res);
+    res.writeHead(429, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({ error: 'Rate limit exceeded: Please wait a moment before sending another request.' }));
+  }
+
   let body;
   try {
     const raw = await readBody(req);
     body = JSON.parse(raw);
   } catch {
+    applySecurityHeaders(res);
     res.writeHead(400, { 'content-type': 'application/json' });
     return res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
   }
@@ -35,17 +71,19 @@ async function handleChat(req, res) {
   const question = lastUserMsg ? lastUserMsg.content : (body.question || '');
 
   if (!question || !question.trim()) {
+    applySecurityHeaders(res);
     res.writeHead(400, { 'content-type': 'application/json' });
     return res.end(JSON.stringify({ error: 'Question is required' }));
   }
 
-  res.writeHead(200, {
+  applySecurityHeaders(res, {
     'content-type': 'text/event-stream; charset=utf-8',
     'cache-control': 'no-cache, no-transform',
     connection: 'keep-alive',
     'x-accel-buffering': 'no',
     'access-control-allow-origin': '*',
   });
+  res.writeHead(200);
 
   let isOpen = true;
   req.on('close', () => { isOpen = false; });
@@ -84,13 +122,26 @@ async function serveStatic(req, res) {
   try {
     const content = await readFile(fullPath);
     const mime = MIME_TYPES[extname(fullPath)] || 'text/plain';
-    res.writeHead(200, {
+
+    const headers = {
       'content-type': mime,
       'access-control-allow-origin': '*',
-    });
+    };
+
+    if (reqPath === '/sw.js') {
+      headers['Service-Worker-Allowed'] = '/';
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    } else if (reqPath.match(/\.(png|jpg|svg|ico|webmanifest)$/)) {
+      headers['Cache-Control'] = 'public, max-age=86400';
+    }
+
+    applySecurityHeaders(res, headers);
+    res.writeHead(200);
+    if (req.method === 'HEAD') return res.end();
     res.end(content);
   } catch {
-    res.writeHead(404, { 'content-type': 'text/plain' });
+    applySecurityHeaders(res, { 'content-type': 'text/plain' });
+    res.writeHead(404);
     res.end('File not found');
   }
 }
@@ -123,7 +174,7 @@ const server = createServer(async (req, res) => {
     return res.end(JSON.stringify({ status: 'ok', engine: 'Verdant 1', author: 'f0undr' }));
   }
 
-  if (req.method === 'GET') {
+  if (req.method === 'GET' || req.method === 'HEAD') {
     return serveStatic(req, res);
   }
 

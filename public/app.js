@@ -1537,3 +1537,41 @@ loadThreads();
 renderSidebarHistory();
 renderActiveThread();
 checkCookieConsent();
+
+/* =========================================================================
+   PWA SERVICE WORKER REGISTRATION & INSTALL PROMPT
+   ========================================================================= */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => {
+        console.log('✓ f0undr AI PWA Service Worker registered:', reg.scope);
+      })
+      .catch((err) => {
+        console.warn('Service Worker registration skipped:', err);
+      });
+  });
+}
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const pwaBtn = document.getElementById('pwaInstallBtn');
+  if (pwaBtn) pwaBtn.style.display = 'flex';
+});
+
+window.installPWA = function() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choice) => {
+      if (choice.outcome === 'accepted') {
+        const pwaBtn = document.getElementById('pwaInstallBtn');
+        if (pwaBtn) pwaBtn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    });
+  } else {
+    alert('To install f0undr AI, open your browser menu and choose "Install App" or "Add to Home Screen".');
+  }
+};
