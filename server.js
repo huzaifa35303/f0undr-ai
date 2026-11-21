@@ -87,10 +87,16 @@ async function handleChat(req, res) {
 
   let isOpen = true;
   req.on('close', () => { isOpen = false; });
+  req.on('error', (err) => { isOpen = false; console.warn('Request error:', err.message); });
+  res.on('error', (err) => { isOpen = false; console.warn('Response error:', err.message); });
 
   const emit = (event, data) => {
     if (isOpen && !res.writableEnded) {
-      res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
+      try {
+        res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`);
+      } catch (err) {
+        isOpen = false;
+      }
     }
   };
 
@@ -156,29 +162,50 @@ function readBody(req) {
 }
 
 const server = createServer(async (req, res) => {
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'access-control-allow-origin': '*',
-      'access-control-allow-methods': 'GET, POST, OPTIONS',
-      'access-control-allow-headers': 'Content-Type',
-    });
-    return res.end();
-  }
+  try {
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+        'access-control-allow-headers': 'Content-Type',
+      });
+      return res.end();
+    }
 
-  if (req.method === 'POST' && req.url === '/api/chat') {
-    return handleChat(req, res);
-  }
+    if (req.method === 'POST' && req.url === '/api/chat') {
+      return await handleChat(req, res);
+    }
 
-  if (req.method === 'GET' && req.url === '/api/health') {
-    res.writeHead(200, { 'content-type': 'application/json' });
-    return res.end(JSON.stringify({ status: 'ok', engine: 'Verdant 1', author: 'f0undr' }));
-  }
+    if (req.method === 'GET' && req.url === '/api/health') {
+      applySecurityHeaders(res, { 'content-type': 'application/json' });
+      res.writeHead(200);
+      return res.end(JSON.stringify({ status: 'ok', engine: 'Verdant 1', author: 'f0undr' }));
+    }
 
-  if (req.method === 'GET' || req.method === 'HEAD') {
-    return serveStatic(req, res);
-  }
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      return await serveStatic(req, res);
+    }
 
-  res.writeHead(405).end();
+    res.writeHead(405).end();
+  } catch (err) {
+    console.error('Unhandled request error:', err);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+  }
+});
+
+server.on('error', (err) => {
+  console.error('Server error:', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
 });
 
 server.listen(config.port, config.host, () => {
