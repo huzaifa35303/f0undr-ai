@@ -1522,7 +1522,25 @@ chatForm.addEventListener('submit', async (e) => {
     saveThreads();
   } catch (err) {
     botUI.statusPill.style.display = 'none';
-    botUI.textDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
+    const isOffline = !navigator.onLine || err.message.includes('Failed to fetch') || err.message.includes('NetworkError');
+    if (isOffline) {
+      botUI.textDiv.innerHTML = `
+        <div style="background:rgba(239, 68, 68, 0.08);border:1px solid rgba(239, 68, 68, 0.25);border-radius:10px;padding:14px;color:#fca5a5;">
+          <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;color:#f87171;margin-bottom:6px;">
+            <span>🔌</span>
+            <span>Offline Mode Active</span>
+          </div>
+          <p style="font-size:12.5px;line-height:1.5;color:#f4f4f5;margin-bottom:10px;">
+            If you checked <strong>"Offline"</strong> in Chrome/Edge DevTools (<em>F12 → Network or Application tab</em>) during the PWA test, please <strong>uncheck "Offline"</strong> so the browser can reconnect to the local server.
+          </p>
+          <button style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;" onclick="location.reload()">
+            🔄 Reload &amp; Reconnect
+          </button>
+        </div>
+      `;
+    } else {
+      botUI.textDiv.innerHTML = `<span style="color:#ef4444">Error: ${escapeHtml(err.message)}</span>`;
+    }
   } finally {
     isStreaming = false;
     sendBtn.disabled = false;
