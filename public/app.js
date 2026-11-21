@@ -64,7 +64,10 @@ const TONES = {
   casual: { name: 'Casual', icon: '💬' },
   direct: { name: 'Direct', icon: '⚡' },
   expert: { name: 'Expert', icon: '🎓' },
-  eli5: { name: 'ELI5', icon: '👶' }
+  eli5: { name: 'ELI5', icon: '👶' },
+  'legal-guardian': { name: 'Legal Guardian', icon: '⚖️' },
+  'seo-architect': { name: 'Open SEO', icon: '🌐' },
+  'code-reviewer': { name: 'Code Reviewer', icon: '🛠️' }
 };
 
 let currentModel = localStorage.getItem(MODEL_STORAGE_KEY) || 'kortex-1';
@@ -145,7 +148,12 @@ function applyModelUI(modelKey) {
   if (currentModelIcon) currentModelIcon.textContent = cfg.icon;
   if (currentModelName) currentModelName.textContent = cfg.name;
   if (chatInput) chatInput.placeholder = cfg.placeholder;
-  if (disclaimerText) disclaimerText.textContent = cfg.disclaimer;
+  const disclaimerPrimary = document.querySelector('.disclaimer-primary');
+  if (disclaimerPrimary) {
+    disclaimerPrimary.textContent = `${cfg.name} by f0undr. Built from first principles with zero API keys. Verify sensitive facts.`;
+  } else if (disclaimerText) {
+    disclaimerText.textContent = cfg.disclaimer;
+  }
   if (userTier) userTier.textContent = cfg.tier;
 
   document.querySelectorAll('.model-option').forEach((opt) => {
@@ -246,6 +254,170 @@ window.clearAllMemories = function() {
   saveMemories();
   renderMemoriesList();
 };
+
+/* =========================================================================
+   20-POINT COMPLIANCE, LOCAL-FIRST EXPORT & DATA PURGE (SHIELDS 1-20)
+   ========================================================================= */
+
+const COOKIE_CONSENT_KEY = 'f0undr_cookie_consent';
+const cookieConsentBanner = document.getElementById('cookieConsentBanner');
+const legalModal = document.getElementById('legalModal');
+const exportModal = document.getElementById('exportModal');
+
+window.checkCookieConsent = function() {
+  try {
+    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (!consent && cookieConsentBanner) {
+      cookieConsentBanner.style.display = 'flex';
+    }
+  } catch {}
+};
+
+window.acceptAllCookies = function() {
+  try {
+    localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ necessary: true, telemetry: false, date: Date.now() }));
+    if (cookieConsentBanner) cookieConsentBanner.style.display = 'none';
+    closeLegalModal();
+  } catch {}
+};
+
+window.declineNonEssentialCookies = function() {
+  try {
+    localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({ necessary: true, telemetry: false, declined: true, date: Date.now() }));
+    if (cookieConsentBanner) cookieConsentBanner.style.display = 'none';
+    closeLegalModal();
+  } catch {}
+};
+
+window.openLegalModal = function(tabName = 'safeguards') {
+  if (legalModal) {
+    switchLegalTab(tabName);
+    legalModal.classList.add('open');
+  }
+};
+
+window.closeLegalModal = function(e) {
+  if (e) e.stopPropagation();
+  legalModal?.classList.remove('open');
+};
+
+window.switchLegalTab = function(tabName) {
+  document.querySelectorAll('.legal-tab-btn').forEach((btn) => {
+    const isActive = btn.dataset.tab === tabName;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  document.querySelectorAll('.legal-tab-panel').forEach((panel) => {
+    panel.classList.toggle('active', panel.id === `panel-${tabName}`);
+  });
+};
+
+window.openExportModal = function() {
+  exportModal?.classList.add('open');
+};
+
+window.closeExportModal = function(e) {
+  if (e) e.stopPropagation();
+  exportModal?.classList.remove('open');
+};
+
+window.exportCurrentChat = function(format = 'markdown') {
+  if (!currentThread || !currentThread.messages || !currentThread.messages.length) {
+    alert('No messages to export in the current conversation.');
+    return;
+  }
+
+  const title = (currentThread.title || 'Conversation').replace(/[^a-zA-Z0-9_-]/g, '_');
+  let blob, filename;
+
+  if (format === 'markdown') {
+    let md = `# ${currentThread.title || 'f0undr AI Conversation'}\n\n`;
+    md += `*Exported from f0undr AI (${currentModel}) on ${new Date().toLocaleString()}*\n\n---\n\n`;
+    currentThread.messages.forEach((m) => {
+      const role = m.role === 'user' ? '🧑 **User**' : `🤖 **${m.model || 'f0undr AI'}**`;
+      md += `### ${role}\n\n${m.content}\n\n`;
+      if (m.sources && m.sources.length) {
+        md += `**Verified Sources:**\n`;
+        m.sources.forEach((s) => {
+          md += `- [${s.title || s.domain}](${s.url})\n`;
+        });
+        md += `\n`;
+      }
+      md += `---\n\n`;
+    });
+    blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    filename = `f0undr_${title}.md`;
+  } else {
+    blob = new Blob([JSON.stringify(currentThread, null, 2)], { type: 'application/json;charset=utf-8' });
+    filename = `f0undr_${title}.json`;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeExportModal();
+};
+
+window.exportAllChatsJSON = function() {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    engine: 'f0undr AI / Kortex 1',
+    threads,
+    memories
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `f0undr_all_conversations_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeExportModal();
+};
+
+window.confirmPurgeAllData = function() {
+  const ok = confirm('⚠️ Are you sure you want to permanently delete all conversations, memories, and preferences from this device? This action cannot be undone.');
+  if (!ok) return;
+
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(MEMORY_STORAGE_KEY);
+    localStorage.removeItem(MODEL_STORAGE_KEY);
+    localStorage.removeItem(TONE_STORAGE_KEY);
+    localStorage.removeItem(COOKIE_CONSENT_KEY);
+  } catch {}
+
+  threads = [];
+  memories = [];
+  currentThread = createNewThread();
+  threads = [currentThread];
+  saveThreads();
+
+  renderSidebarHistory();
+  renderActiveThread();
+  renderMemoriesList();
+  applyModelUI('kortex-1');
+  applyToneUI('casual');
+
+  closeLegalModal();
+  closeMemoryModal();
+  closeExportModal();
+
+  alert('✓ All conversations, memories, and local settings have been permanently deleted from your browser.');
+};
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeLegalModal();
+    closeExportModal();
+    toggleMemoryModal(false);
+    modelPickerContainer?.classList.remove('open');
+    tonePickerContainer?.classList.remove('open');
+  }
+});
 
 function stripMarkdownForSpeech(md = '') {
   return md
@@ -1364,3 +1536,4 @@ loadMemories();
 loadThreads();
 renderSidebarHistory();
 renderActiveThread();
+checkCookieConsent();
